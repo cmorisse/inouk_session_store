@@ -1,0 +1,24 @@
+*.pyc
+.vscode
+
+# For buildout
+.installed.cfg
+bin/
+buildout.cfg
+develop-eggs/
+downloads/
+eggs/
+etc/
+parts/
+py27/
+/upgrade.py
+.idea/
+var/
+buffer.txt
+.c9/
+
+#Tmp
+ikpdb
+sandbox
+inouk.ikpdb
+__pycache__/*
