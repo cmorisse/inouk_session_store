@@ -55,8 +55,8 @@ def load_env_vars():
             'INOUK_SESSION_STORE_DBTABLE': INOUK_SESSION_STORE_DBTABLE,
             'INOUK_SESSION_STORE_DEBUG': INOUK_SESSION_STORE_DEBUG
         }
-        print(ENV_VARS)
-    _logger.info("ENV VARs loaded.")
+        _logger.info("inouk_session_store ENV VARs loaded?")
+    _logger.info("inouk_session_store active ENV VARs: %s", ENV_VARS)
     return ENV_VARS
 
 if ENV_VARS is None:
