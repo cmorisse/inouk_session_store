@@ -42,7 +42,7 @@ def load_env_vars():
     global INOUK_SESSION_STORE_DBTABLE    
     global INOUK_SESSION_STORE_DEBUG    
     if ENV_VARS is None:
-        INOUK_SESSION_STORE_DATABASE = os.environ.get('INOUK_SESSION_STORE', 'undefined').lower()=='postgres'
+        INOUK_SESSION_STORE_DATABASE = os.environ.get('INOUK_SESSION_STORE', 'undefined').lower() in ('postgres', 'postgresql',)
         INOUK_SESSION_STORE_REDIS = os.environ.get('INOUK_SESSION_STORE', 'undefined').lower()=='redis'
         INOUK_SESSION_STORE_DBNAME = os.environ.get('INOUK_SESSION_STORE_DBNAME', 'inouk_session_store').lower()
         INOUK_SESSION_STORE_DBTABLE = os.environ.get('INOUK_SESSION_STORE_DBTABLE', 'odoo_sessions').lower()
