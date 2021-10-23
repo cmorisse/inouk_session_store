@@ -27,9 +27,8 @@ import timeit
 import os
 
 from odoo import http, tools
-from odoo.addons.muk_session_store.store.postgres import PostgresSessionStore
-from odoo.addons.muk_session_store.store.redis import RedisSessionStore
-from odoo.addons.muk_utils.tools.patch import monkey_patch
+from odoo.addons.inouk_session_store.store.postgres import PostgresSessionStore
+from odoo.addons.inouk_session_store.store.redis import RedisSessionStore
 from odoo.http import request
 from odoo.tools.func import lazy_property
 
@@ -46,6 +45,15 @@ except ImportError:
         _logger.warning("The Python library redis is not installed.")
     redis = False
 
+
+def monkey_patch_class(cls):
+    def patchr(method):
+        method_name = method.__name__
+        method._original = getattr(cls, method_name, None)
+        setattr(cls, method_name, method)
+        return method
+    return patchr
+
 def bench_param_access():
     _dd = timeit.timeit(lambda: ENV_VARS['INOUK_SESSION_STORE_DATABASE'], number=100000)
     print("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx _dict_access=%s", _dd)
@@ -53,8 +61,7 @@ def bench_param_access():
     print("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx _var_access=%s", _dv)    
 
 
-
-@monkey_patch(http)
+@monkey_patch_class(http)
 def db_monodb(httprequest=None):
     if INOUK_SESSION_STORE_DATABASE:
         httprequest = httprequest or request.httprequest
@@ -68,18 +75,17 @@ def db_monodb(httprequest=None):
             return dbs[0]
         return None
     else:
-        return db_monodb.super(httprequest)
+        return db_monodb._original(httprequest)
 
-
-@monkey_patch(http)
+@monkey_patch_class(http)
 def db_filter(dbs, httprequest=None):
-    dbs = db_filter.super(dbs, httprequest=httprequest)
+    dbs = db_filter._original(dbs, httprequest=httprequest)
     if INOUK_SESSION_STORE_DBNAME in dbs:
         dbs.remove(INOUK_SESSION_STORE_DBNAME)
     return dbs
 
 
-@monkey_patch(http)
+@monkey_patch_class(http)
 def session_gc(session_store):
     if INOUK_SESSION_STORE_DATABASE:
         if random.random() < 0.001:
@@ -87,7 +93,7 @@ def session_gc(session_store):
     elif INOUK_SESSION_STORE_REDIS:
         pass
     else:
-        session_gc.super(session_store)
+        session_gc._original(session_store)
 
 
 class Root(http.Root):
