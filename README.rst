@@ -1,6 +1,6 @@
-=================
+===================
 Inouk Session Store
-=================
+===================
 
 Warning: This is a fork of Muk It - Odoo Session Store.
 
