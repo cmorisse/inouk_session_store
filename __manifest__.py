@@ -26,7 +26,7 @@
     "version": "13.0.1.0.0",
     "category": "Extra Tools",
     "license": "LGPL-3",
-    "website": "https://github.com/cmorisse",
+    "website": "https://github.com/cmorisse/inouk_session_store.git",
     "author": "MuK IT, Cyril MORISSE",
     "contributors": ["Mathias Markl <mathias.markl@mukit.at>", "Cyril MORISSE <cmorisse@boxes3.net>"],
     "depends": ["inouk_core"],
