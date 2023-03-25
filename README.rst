@@ -52,6 +52,8 @@ file or passing a load parameter to the start script.
 
 Parameter: ``--load=web,inouk_session_store``
 
+Or in odoo config file: ``server_wide_modules = base,web,inouk_session_store```
+
 
 Addon options
 -------------
