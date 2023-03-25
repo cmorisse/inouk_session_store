@@ -30,10 +30,13 @@ from contextlib import closing
 from contextlib import contextmanager
 from datetime import datetime, date
 
-from werkzeug.contrib.sessions import SessionStore
+#from werkzeug.contrib.sessions import SessionStore
+from odoo.tools._vendor import sessions
 
 from odoo.sql_db import db_connect
 from odoo.tools import config
+from odoo.service import security, model as service_model
+
 
 from ..config import INOUK_SESSION_STORE_DATABASE, INOUK_SESSION_STORE_DBNAME, INOUK_SESSION_STORE_DBTABLE
 
@@ -54,7 +57,7 @@ def retry_database(func):
     return wrapper
 
 
-class PostgresSessionStore(SessionStore):
+class PostgresSessionStore(sessions.SessionStore):
     def __init__(self, *args, **kwargs):
         super(PostgresSessionStore, self).__init__(*args, **kwargs)
         #self.dbname = config.get("session_store_dbname", "session_store")
@@ -67,7 +70,7 @@ class PostgresSessionStore(SessionStore):
         _logger.info("Setting up session database.")
         try:
             with db_connect(self.dbname, allow_uri=True).cursor() as cursor:
-                cursor.autocommit(True)
+                cursor._cnx.autocommit = True
                 self._create_table(cursor)
         except:
             self._create_database()
@@ -76,7 +79,7 @@ class PostgresSessionStore(SessionStore):
     def _create_database(self):
         _logger.info("Creating sessions database.")
         with db_connect("postgres").cursor() as cursor:
-            cursor.autocommit(True)
+            cursor._cnx.autocommit = True
             cursor.execute(
                 f"CREATE DATABASE {self.dbname} ENCODING 'unicode' TEMPLATE 'template0';"
             )
@@ -96,7 +99,7 @@ class PostgresSessionStore(SessionStore):
     def open_cursor(self):
         connection = db_connect(self.dbname, allow_uri=True)
         cursor = connection.cursor()
-        cursor.autocommit(True)
+        cursor._cnx.autocommit = True
         yield cursor
         cursor.close()
 
@@ -124,6 +127,14 @@ class PostgresSessionStore(SessionStore):
                 "DELETE FROM {dbtable} WHERE sid=%s;".format(dbtable=self.dbtable),
                 [session.sid],
             )
+
+    def rotate(self, session, env):
+        self.delete(session)
+        session.sid = self.generate_key()
+        if session.uid and env:
+            session.session_token = security.compute_session_token(session, env)
+        session.should_rotate = False
+        self.save(session)
 
     @retry_database
     def get(self, sid):

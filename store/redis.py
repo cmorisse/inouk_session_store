@@ -25,7 +25,9 @@ import logging
 import pickle
 
 from odoo.tools import config
-from werkzeug.contrib.sessions import SessionStore
+from odoo.tools._vendor import sessions
+from odoo.service import security, model as service_model
+
 
 _logger = logging.getLogger(__name__)
 
@@ -51,7 +53,7 @@ def retry_redis(func):
     return wrapper
 
 
-class RedisSessionStore(SessionStore):
+class RedisSessionStore(sessions.SessionStore):
     def __init__(self, *args, **kwargs):
         raise Exception("Redis Session Store is not supported yet.")
         super(RedisSessionStore, self).__init__(*args, **kwargs)
@@ -80,6 +82,14 @@ class RedisSessionStore(SessionStore):
     @retry_redis
     def delete(self, session):
         self.server.delete(self._get_session_key(session.sid))
+
+    def rotate(self, session, env):
+        self.delete(session)
+        session.sid = self.generate_key()
+        if session.uid and env:
+            session.session_token = security.compute_session_token(session, env)
+        session.should_rotate = False
+        self.save(session)
 
     @retry_redis
     def get(self, sid):
