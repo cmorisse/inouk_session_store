@@ -26,3 +26,5 @@ from odoo.tools import config
 def _patch_system():
     if "inouk_session_store" in config.get("server_wide_modules"):
         from . import patch
+
+from . import controllers
