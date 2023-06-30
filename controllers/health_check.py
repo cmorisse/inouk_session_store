@@ -48,10 +48,7 @@ from odoo.service import db, security
 
 _logger = logging.getLogger(__name__)
 
-try:  # v16
-    from odoo.addons.web.controllers.session import Session
-except: # before v16
-    from odoo.addons.web.controllers.main import Session
+from odoo.addons.web.controllers.main import Session
 
 
 

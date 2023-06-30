@@ -78,8 +78,8 @@ def db_monodb(httprequest=None):
         return db_monodb._original(httprequest)
 
 @monkey_patch_class(http)
-def db_filter(dbs, host=None):
-    dbs = db_filter._original(dbs, host=host)
+def db_filter(dbs, httprequest=None):
+    dbs = db_filter._original(dbs, httprequest=httprequest)
     if INOUK_SESSION_STORE_DBNAME in dbs:
         dbs.remove(INOUK_SESSION_STORE_DBNAME)
     return dbs
@@ -96,14 +96,14 @@ def session_gc(session_store):
         session_gc._original(session_store)
 
 
-class Application(http.Application):
+class Root(http.Root):
     @lazy_property
     def session_store(self):
         if INOUK_SESSION_STORE_DATABASE:
-            return PostgresSessionStore(session_class=http.Session)
+            return PostgresSessionStore(session_class=http.OpenERPSession)
         elif INOUK_SESSION_STORE_REDIS:
-            return RedisSessionStore(session_class=http.Session)
-        return super(Application, self).session_store
+            return RedisSessionStore(session_class=http.OpenERPSession)
+        return super(Root, self).session_store
 
 
-http.root = Application()
+http.root = Root()
