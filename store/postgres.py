@@ -85,15 +85,26 @@ class PostgresSessionStore(sessions.SessionStore):
             )
 
     def _create_table(self, cursor):
-        _logger.info("Creating sessions table.")
-        cursor.execute(
-            f"CREATE TABLE IF NOT EXISTS {self.dbtable} ("
-            f"    sid varchar PRIMARY KEY,"
-            f"    db_name VARCHAR,"
-            f"    write_date timestamp without time zone NOT NULL,"
-            f"    payload bytea NOT NULL"
-            f");"
-        )
+        _logger.info("  Checking/creating sessions table.")
+        cursor.execute(f"SELECT EXISTS ( SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename  = '{self.dbtable}');")
+        _table_exist = cursor.fetchone()
+        if not _table_exist:
+            _logger.info("  Session table '%s' does not exists. Trying to create it", self.dbtable)
+            try:
+                cursor.execute(
+                    f"CREATE TABLE IF NOT EXISTS {self.dbtable} ("
+                    f"    sid varchar PRIMARY KEY,"
+                    f"    db_name VARCHAR,"
+                    f"    write_date timestamp without time zone NOT NULL,"
+                    f"    payload bytea NOT NULL"
+                    f");"
+                )
+            except:
+                _logger.error("  Failed to create missing session table '%s'.", self.dbtable)
+                raise
+
+        else:
+            _logger.info("  Session table '%s' exists. I will use it.", self.dbtable)
 
     @contextmanager
     def open_cursor(self):
