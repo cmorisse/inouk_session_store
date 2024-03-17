@@ -23,7 +23,7 @@
 {
     "name": "Inouk Session Store",
     "summary": """Allow to store sessions in either PostgreSQL or Redis (Soon). This is a fork of the Muk Session Store Addon from Muk It.""",
-    "version": "13.0.1.0.0",
+    "version": "1.0.0",
     "category": "Extra Tools",
     "license": "LGPL-3",
     "website": "https://github.com/cmorisse/inouk_session_store.git",
