@@ -32,7 +32,13 @@ from odoo.addons.inouk_session_store.store.redis import RedisSessionStore
 from odoo.http import request
 from odoo.tools.func import lazy_property
 
-from ..config import INOUK_SESSION_STORE_REDIS, INOUK_SESSION_STORE_DATABASE, INOUK_SESSION_STORE_DBNAME
+from ..config import (
+    INOUK_SESSION_STORE_REDIS, 
+    INOUK_SESSION_STORE_DATABASE, 
+    INOUK_SESSION_STORE_DBNAME, 
+    INOUK_SESSION_STORE_MONODB
+)
+    
 
 
 _logger = logging.getLogger(__name__)
@@ -69,7 +75,7 @@ def db_monodb(httprequest=None):
         db_session = httprequest.session.db
         if db_session in dbs:
             return db_session
-        if INOUK_SESSION_STORE_DBNAME in dbs:
+        if INOUK_SESSION_STORE_DBNAME in dbs and not INOUK_SESSION_STORE_MONODB:
             dbs.remove(INOUK_SESSION_STORE_DBNAME)
         if len(dbs) == 1:
             return dbs[0]
@@ -80,7 +86,7 @@ def db_monodb(httprequest=None):
 @monkey_patch_class(http)
 def db_filter(dbs, httprequest=None):
     dbs = db_filter._original(dbs, httprequest=httprequest)
-    if INOUK_SESSION_STORE_DBNAME in dbs:
+    if INOUK_SESSION_STORE_DBNAME in dbs and not INOUK_SESSION_STORE_MONODB:
         dbs.remove(INOUK_SESSION_STORE_DBNAME)
     return dbs
 

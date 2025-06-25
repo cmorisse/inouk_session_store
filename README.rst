@@ -64,11 +64,12 @@ INOUK_SESSION_STORE = 'postgresql' or 'redis'
 PostgreSQL options
 __________________
 
-If INOUK_SESSION_STORE is postgresql, 2 more options are available:
+If INOUK_SESSION_STORE = postgresql, 3 more options are available:
 
     * INOUK_SESSION_STORE_DBNAME ; The name of the database used to store sessions. Default value is `inouk_session_store`.
-
-    * INOUK_SESSION_STORE_DBTABLE ; The name of the table used to store sessions. Default value is `odoo_sessions`.
+    * INOUK_SESSION_STORE_DBTABLE ; The name of the table used to store sessions. Default value is `inouk_odoo_sessions`.
+    * INOUK_SESSION_STORE_MONODB ; Set to True to allow to store session in the current database. Default value is `False`. 
+        Requires odoo to be launched with --database parameter.
 
 
 Redis options

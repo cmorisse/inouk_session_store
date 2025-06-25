@@ -64,7 +64,7 @@ class PostgresSessionStore(SessionStore):
         self._setup_database(raise_exception=False)
 
     def _setup_database(self, raise_exception=True):
-        _logger.info("Setting up session database.")
+        _logger.info("Setting up session database '%s'.", self.dbname)
         try:
             with db_connect(self.dbname, allow_uri=True).cursor() as cursor:
                 cursor.autocommit(True)
@@ -82,9 +82,10 @@ class PostgresSessionStore(SessionStore):
             )
 
     def _create_table(self, cursor):
-        _logger.info("  Checking/creating sessions table.")
+        _logger.info("  Checking/creating sessions table in database '%s'.", self.dbname)
         cursor.execute(f"SELECT EXISTS ( SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename  = '{self.dbtable}');")
-        _table_exist = cursor.fetchone()
+        _table_exist = cursor.fetchone()[0]
+        #print("  table_exist? ", _table_exist)
         if not _table_exist:
             _logger.info("  Session table '%s' does not exists. Trying to create it", self.dbtable)
             try:
@@ -96,8 +97,9 @@ class PostgresSessionStore(SessionStore):
                     f"    payload bytea NOT NULL"
                     f");"
                 )
+                _logger.info("  Session table '%s' created (%s).", self.dbtable, cursor.statusmessage)
             except:
-                _logger.error("  Failed to create missing session table '%s'.", self.dbtable)
+                _logger.error("  Failed to create missing session table '%s' with error: %s.", self.dbtable, cursor.statusmessage)
                 raise
 
         else:
