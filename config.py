@@ -33,7 +33,7 @@ INOUK_SESSION_STORE_REDIS = None
 INOUK_SESSION_STORE_DBNAME = None
 INOUK_SESSION_STORE_DBTABLE = None
 INOUK_SESSION_STORE_DEBUG = False
-INOUK_SESSION_STORE_MONODB = False  # Set to True to allow to store session in the current database
+INOUK_SESSION_STORE_SAMEDB = False  # Set to True to allow to store session in the current database
 
 def load_env_vars():
     global ENV_VARS
@@ -42,14 +42,14 @@ def load_env_vars():
     global INOUK_SESSION_STORE_DBNAME
     global INOUK_SESSION_STORE_DBTABLE    
     global INOUK_SESSION_STORE_DEBUG    
-    global INOUK_SESSION_STORE_MONODB
+    global INOUK_SESSION_STORE_SAMEDB
     if ENV_VARS is None:
         INOUK_SESSION_STORE_DATABASE = os.environ.get('INOUK_SESSION_STORE', 'undefined').lower() in ('postgres', 'postgresql',)
         INOUK_SESSION_STORE_REDIS = os.environ.get('INOUK_SESSION_STORE', 'undefined').lower()=='redis'
         INOUK_SESSION_STORE_DBNAME = os.environ.get('INOUK_SESSION_STORE_DBNAME', 'inouk_session_store').lower()
         INOUK_SESSION_STORE_DBTABLE = os.environ.get('INOUK_SESSION_STORE_DBTABLE', 'inouk_odoo_sessions').lower()
         INOUK_SESSION_STORE_DEBUG = os.environ.get('INOUK_SESSION_STORE_DEBUG', "0").lower() in ['yes', 'true', '1', 'y']
-        INOUK_SESSION_STORE_MONODB = os.environ.get('INOUK_SESSION_STORE_MONODB', "0").lower() in ['yes', 'true', '1', 'y']
+        INOUK_SESSION_STORE_SAMEDB = os.environ.get('INOUK_SESSION_STORE_SAMEDB', "0").lower() in ['yes', 'true', '1', 'y']
 
         ENV_VARS = {
             'INOUK_SESSION_STORE_DATABASE': INOUK_SESSION_STORE_DATABASE,
@@ -57,7 +57,7 @@ def load_env_vars():
             'INOUK_SESSION_STORE_DBNAME': INOUK_SESSION_STORE_DBNAME,
             'INOUK_SESSION_STORE_DBTABLE': INOUK_SESSION_STORE_DBTABLE,
             'INOUK_SESSION_STORE_DEBUG': INOUK_SESSION_STORE_DEBUG,
-            'INOUK_SESSION_STORE_MONODB': INOUK_SESSION_STORE_MONODB
+            'INOUK_SESSION_STORE_SAMEDB': INOUK_SESSION_STORE_SAMEDB
         }
         _logger.info("inouk_session_store params loaded from ENV VARs.")
     _logger.info("inouk_session_store params: %s", ENV_VARS)

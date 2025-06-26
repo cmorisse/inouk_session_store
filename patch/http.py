@@ -36,7 +36,7 @@ from ..config import (
     INOUK_SESSION_STORE_REDIS, 
     INOUK_SESSION_STORE_DATABASE, 
     INOUK_SESSION_STORE_DBNAME, 
-    INOUK_SESSION_STORE_MONODB
+    INOUK_SESSION_STORE_SAMEDB
 )
     
 
@@ -75,7 +75,7 @@ def db_monodb(httprequest=None):
         db_session = httprequest.session.db
         if db_session in dbs:
             return db_session
-        if INOUK_SESSION_STORE_DBNAME in dbs and not INOUK_SESSION_STORE_MONODB:
+        if INOUK_SESSION_STORE_DBNAME in dbs and not INOUK_SESSION_STORE_SAMEDB:
             dbs.remove(INOUK_SESSION_STORE_DBNAME)
         if len(dbs) == 1:
             return dbs[0]
@@ -86,7 +86,7 @@ def db_monodb(httprequest=None):
 @monkey_patch_class(http)
 def db_filter(dbs, httprequest=None):
     dbs = db_filter._original(dbs, httprequest=httprequest)
-    if INOUK_SESSION_STORE_DBNAME in dbs and not INOUK_SESSION_STORE_MONODB:
+    if INOUK_SESSION_STORE_DBNAME in dbs and not INOUK_SESSION_STORE_SAMEDB:
         dbs.remove(INOUK_SESSION_STORE_DBNAME)
     return dbs
 
