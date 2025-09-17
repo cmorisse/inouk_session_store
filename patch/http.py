@@ -32,7 +32,13 @@ from odoo.addons.inouk_session_store.store.redis import RedisSessionStore
 from odoo.http import request
 from odoo.tools.func import lazy_property
 
-from ..config import INOUK_SESSION_STORE_REDIS, INOUK_SESSION_STORE_DATABASE, INOUK_SESSION_STORE_DBNAME
+from ..config import (
+    INOUK_SESSION_STORE_REDIS, 
+    INOUK_SESSION_STORE_DATABASE, 
+    INOUK_SESSION_STORE_DBNAME, 
+    INOUK_SESSION_STORE_SAMEDB
+)
+    
 
 
 _logger = logging.getLogger(__name__)
@@ -65,11 +71,12 @@ def bench_param_access():
 def db_monodb(httprequest=None):
     if INOUK_SESSION_STORE_DATABASE:
         httprequest = httprequest or request.httprequest
-        dbs = http.db_list(True, httprequest)
+        host = httprequest.environ.get('HTTP_HOST') if httprequest else None
+        dbs = http.db_list(True, host)
         db_session = httprequest.session.db
         if db_session in dbs:
             return db_session
-        if INOUK_SESSION_STORE_DBNAME in dbs:
+        if INOUK_SESSION_STORE_DBNAME in dbs and not INOUK_SESSION_STORE_SAMEDB:
             dbs.remove(INOUK_SESSION_STORE_DBNAME)
         if len(dbs) == 1:
             return dbs[0]
@@ -80,7 +87,7 @@ def db_monodb(httprequest=None):
 @monkey_patch_class(http)
 def db_filter(dbs, host=None):
     dbs = db_filter._original(dbs, host=host)
-    if INOUK_SESSION_STORE_DBNAME in dbs:
+    if INOUK_SESSION_STORE_DBNAME in dbs and not INOUK_SESSION_STORE_SAMEDB:
         dbs.remove(INOUK_SESSION_STORE_DBNAME)
     return dbs
 
