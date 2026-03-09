@@ -30,7 +30,7 @@ from odoo import http, tools
 from odoo.addons.inouk_session_store.store.postgres import PostgresSessionStore
 from odoo.addons.inouk_session_store.store.redis import RedisSessionStore
 from odoo.http import request
-from odoo.tools.func import lazy_property
+from functools import cached_property
 
 from ..config import (
     INOUK_SESSION_STORE_REDIS, 
@@ -104,7 +104,7 @@ def session_gc(session_store):
 
 
 class Application(http.Application):
-    @lazy_property
+    @cached_property
     def session_store(self):
         if INOUK_SESSION_STORE_DATABASE:
             return PostgresSessionStore(session_class=http.Session)
