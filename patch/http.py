@@ -22,7 +22,6 @@
 ###################################################################################
 
 import logging
-import random
 import timeit
 import os
 
@@ -90,17 +89,6 @@ def db_filter(dbs, host=None):
     if INOUK_SESSION_STORE_DBNAME in dbs and not INOUK_SESSION_STORE_SAMEDB:
         dbs.remove(INOUK_SESSION_STORE_DBNAME)
     return dbs
-
-
-@monkey_patch_class(http)
-def session_gc(session_store):
-    if INOUK_SESSION_STORE_DATABASE:
-        if random.random() < 0.001:
-            session_store.clean()
-    elif INOUK_SESSION_STORE_REDIS:
-        pass
-    else:
-        session_gc._original(session_store)
 
 
 class Application(http.Application):

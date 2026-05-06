@@ -187,8 +187,12 @@ class PostgresSessionStore(sessions.SessionStore):
             return [record[0] for record in cursor.fetchall()]
 
     @retry_database
-    def clean(self):
+    def vacuum(self, max_lifetime=60 * 60 * 24 * 7):
         with self.open_cursor() as cursor:
             cursor.execute(
-                f"DELETE FROM {self.dbtable} WHERE now() at time zone 'UTC' - write_date > '7 days';"
+                f"DELETE FROM {self.dbtable} WHERE now() at time zone 'UTC' - write_date > interval '1 second' * %s;",
+                [max_lifetime],
             )
+
+    def clean(self):
+        self.vacuum()
