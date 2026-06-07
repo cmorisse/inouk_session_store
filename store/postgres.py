@@ -21,11 +21,16 @@
 #
 ###################################################################################
 
+import os
+import re
+import time
+import base64
 import pickle
 import logging
 import psycopg2
 import functools
 
+from hashlib import sha512
 from contextlib import closing
 from contextlib import contextmanager
 from datetime import datetime, date
@@ -36,9 +41,19 @@ from odoo.tools._vendor import sessions
 from odoo.sql_db import db_connect
 from odoo.tools import config
 from odoo.service import security, model as service_model
+# Soft-rotation contract constants, kept in sync with odoo.http.
+from odoo.http import STORED_SESSION_BYTES, SESSION_DELETION_TIMER
 
 
 from ..config import INOUK_SESSION_STORE_DATABASE, INOUK_SESSION_STORE_DBNAME, INOUK_SESSION_STORE_DBTABLE
+
+# Mirrors odoo.http: new sids are 84-char url-safe base64 so that the first
+# STORED_SESSION_BYTES (42) chars form a stable identifier usable across soft
+# rotations (csrf token, res.device.log). Legacy sids were 40-char sha1 hex;
+# we keep accepting them so existing cookies survive the upgrade.
+_base64_urlsafe_re = re.compile(r'^[A-Za-z0-9_-]{84}$')
+_session_identifier_re = re.compile(r'^[A-Za-z0-9_-]{%s}$' % STORED_SESSION_BYTES)
+_legacy_sha1_re = re.compile(r'^[0-9a-f]{40}$')
 
 _logger = logging.getLogger(__name__)
 
@@ -141,12 +156,39 @@ class PostgresSessionStore(sessions.SessionStore):
                 [session.sid],
             )
 
-    def rotate(self, session, env):
-        self.delete(session)
-        session.sid = self.generate_key()
-        if session.uid and env:
+    def rotate(self, session, env, soft=False):
+        # Mirrors odoo.http.FilesystemSessionStore.rotate. A *soft* rotation
+        # changes only the second half of the sid, keeping the first
+        # STORED_SESSION_BYTES (42) chars stable so in-flight requests still
+        # carrying the old cookie keep resolving (the old row is retained for
+        # SESSION_DELETION_TIMER seconds) and csrf tokens stay valid. A *hard*
+        # rotation (login/logout/password change) replaces the whole sid.
+        if soft:
+            # Concurrent requests may all try to soft-rotate the same session;
+            # only the first creates the new sid, the others just follow it.
+            static = session.sid[:STORED_SESSION_BYTES]
+            recent_session = self.get(session.sid)
+            if 'next_sid' in recent_session:
+                session.sid = recent_session['next_sid']
+                return
+            next_sid = static + self.generate_key()[STORED_SESSION_BYTES:]
+            session['next_sid'] = next_sid
+            session['deletion_time'] = time.time() + SESSION_DELETION_TIMER
+            self.save(session)
+            # Now switch to the new session; the old row lingers until
+            # delete_old_sessions reaps it.
+            session['gc_previous_sessions'] = True
+            session.sid = next_sid
+            del session['deletion_time']
+            del session['next_sid']
+        else:
+            self.delete(session)
+            session.sid = self.generate_key()
+        if session.uid:
+            assert env, "saving this session requires an environment"
             session.session_token = security.compute_session_token(session, env)
         session.should_rotate = False
+        session['create_time'] = time.time()
         self.save(session)
 
     @retry_database
@@ -187,8 +229,69 @@ class PostgresSessionStore(sessions.SessionStore):
             return [record[0] for record in cursor.fetchall()]
 
     @retry_database
-    def clean(self):
+    def vacuum(self, max_lifetime=60 * 60 * 24 * 7):
+        # Called by Odoo's session GC cron (ir_http._gc_sessions ->
+        # session_store.vacuum(max_lifetime=...)). Odoo 18 renamed the old
+        # `clean()` entry point to `vacuum()`.
         with self.open_cursor() as cursor:
             cursor.execute(
-                f"DELETE FROM {self.dbtable} WHERE now() at time zone 'UTC' - write_date > '7 days';"
+                f"DELETE FROM {self.dbtable} WHERE now() at time zone 'UTC' - write_date > interval '1 second' * %s;",
+                [max_lifetime],
+            )
+
+    def clean(self):
+        self.vacuum()
+
+    def delete_old_sessions(self, session):
+        # Called on every authenticated request via
+        # security.check_session() -> session._delete_old_sessions().
+        # After a soft rotation the previous session row is kept alive for
+        # SESSION_DELETION_TIMER seconds (to serve in-flight requests still
+        # carrying the old cookie); once that grace period elapses we reap the
+        # whole identifier (old + current rows) and re-save the current one.
+        if 'gc_previous_sessions' in session:
+            if session['create_time'] + SESSION_DELETION_TIMER < time.time():
+                self.delete_from_identifiers([session.sid[:STORED_SESSION_BYTES]])
+                del session['gc_previous_sessions']
+                self.save(session)
+
+    def generate_key(self, salt=None):
+        # Mirrors odoo.http.FilesystemSessionStore.generate_key: an 84-char
+        # url-safe base64 key whose first STORED_SESSION_BYTES chars act as a
+        # stable identifier across soft rotations.
+        key = str(time.time()).encode() + os.urandom(64)
+        hash_key = sha512(key).digest()[:-1]  # prevent base64 padding
+        return base64.urlsafe_b64encode(hash_key).decode('utf-8')
+
+    def is_valid_key(self, key):
+        # Accept both the new 84-char base64 keys and the legacy 40-char sha1
+        # hex keys so cookies issued before this upgrade keep working.
+        return bool(_base64_urlsafe_re.match(key) or _legacy_sha1_re.match(key))
+
+    @retry_database
+    def get_missing_session_identifiers(self, identifiers):
+        # Used by res.device(.log) to detect revoked/expired sessions: returns
+        # the subset of identifiers (sid[:42] prefixes) that have no session row.
+        identifiers = set(identifiers)
+        if not identifiers:
+            return identifiers
+        with self.open_cursor() as cursor:
+            cursor.execute(
+                f"SELECT DISTINCT left(sid, %s) FROM {self.dbtable} WHERE left(sid, %s) = ANY(%s);",
+                [STORED_SESSION_BYTES, STORED_SESSION_BYTES, list(identifiers)],
+            )
+            present = {record[0] for record in cursor.fetchall()}
+        return identifiers - present
+
+    @retry_database
+    def delete_from_identifiers(self, identifiers):
+        # Delete every session whose sid starts with one of the given 42-char
+        # identifiers (used by device revocation and soft-rotation cleanup).
+        valid = [i for i in identifiers if _session_identifier_re.match(i)]
+        if not valid:
+            return
+        with self.open_cursor() as cursor:
+            cursor.execute(
+                f"DELETE FROM {self.dbtable} WHERE left(sid, %s) = ANY(%s);",
+                [STORED_SESSION_BYTES, valid],
             )
