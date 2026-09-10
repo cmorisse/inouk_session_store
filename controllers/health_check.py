@@ -1,70 +1,47 @@
-# -*- coding: utf-8 -*-
-# Part of Odoo. See LICENSE file for full copyright and licensing details.
+###################################################################################
+#
+#    Copyright (c) 2021 Cyril MORISSE (@cmorisse)
+#
+#    This file is part of Inouk Session Store
+#    (see https://gitub.com/cmorisse/inouk_session_store).
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Lesser General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Lesser General Public License for more details.
+#
+#    You should have received a copy of the GNU Lesser General Public License
+#    along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+###################################################################################
 
-import babel.messages.pofile
-import base64
-import copy
-import datetime
-import functools
-import glob
-import hashlib
-import io
-import itertools
-import jinja2
-import json
-import logging
-import operator
-import os
-import re
-import sys
-import tempfile
-import time
-
-import werkzeug
-import werkzeug.exceptions
-import werkzeug.utils
-import werkzeug.wrappers
-import werkzeug.wsgi
-from collections import OrderedDict, defaultdict, Counter
-from werkzeug.urls import url_decode, iri_to_uri
-from lxml import etree
-import unicodedata
+from odoo import http
+from odoo.http import request
 
 
-import odoo
-import odoo.modules.registry
-from odoo.api import call_kw, Environment
-from odoo.modules import get_module_path, get_resource_path
-from odoo.tools import image_process, topological_sort, html_escape, pycompat, ustr, lazy_property, float_repr
-from odoo.tools.mimetypes import guess_mimetype
-from odoo.tools.translate import _
-from odoo.tools.misc import str2bool, xlsxwriter, file_open
-from odoo.tools.safe_eval import safe_eval
-from odoo import http, tools
-from odoo.http import content_disposition, dispatch_rpc, request, serialize_exception as _serialize_exception, Response
-from odoo.exceptions import AccessError, UserError, AccessDenied
-from odoo.models import check_method_name
-from odoo.service import db, security
+class InoukHealthCheck(http.Controller):
+    """Report whether the PostgreSQL this server writes to is a primary or a standby.
 
-_logger = logging.getLogger(__name__)
+    Muppy polls this endpoint on every App Server of an HA pack: ``cluster_is_standby``
+    is the healthy answer on the standby, and no answer at all is what the supervision
+    reads as broken. The addon is server-wide, so the route is served on every database.
+    The route is session-less by contract (``save_session=False``): a probe leaves
+    nothing behind, neither a session nor a ``session_id`` cookie.
+    """
 
-try:  # v16
-    from odoo.addons.web.controllers.session import Session
-except: # before v16
-    from odoo.addons.web.controllers.main import Session
-
-
-
-class InoukHealthCheck(Session):
-    @http.route('/inouk_health_check', type='http', auth="none")
+    @http.route('/inouk_health_check', type='http', auth='none', methods=['GET'],
+                csrf=False, save_session=False, readonly=False)
     def inouk_health_check(self):
-        request.env.cr.execute("SELECT pg_is_in_recovery();")
-        _r = request.env.cr.dictfetchall()
-        if _r:
-            cluster_is_standby = _r[0].get('pg_is_in_recovery')
-            _response_dict = {
-                "replication_status":  "cluster_is_standby" if cluster_is_standby else "cluster_is_primary"
-            }
-        else:
-            _response_dict = _r
-        return json.dumps(_response_dict)
+        # readonly=False on purpose: the question is about the node THIS server writes to.
+        # With db_replica_host set, the default (readonly=True for auth='none') would run
+        # the SELECT on the replica and a healthy primary would report itself as standby.
+        request.env.cr.execute("SELECT pg_is_in_recovery()")
+        [(in_recovery,)] = request.env.cr.fetchall()
+        return request.make_json_response({
+            'replication_status': 'cluster_is_standby' if in_recovery else 'cluster_is_primary',
+        })
