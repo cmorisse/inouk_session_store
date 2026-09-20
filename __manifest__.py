@@ -2,7 +2,13 @@
 {
     'name': 'Inouk Session Store',
     'summary': 'Allow to store sessions in either PostgreSQL or Redis (Soon). This is a fork of the Muk Session Store Addon from Muk It.',
-    'version': '1.0.0',
+    'description': """
+Stores Odoo web sessions in PostgreSQL (Redis planned) so several instances can serve
+the same users, and serves ``/inouk_health_check``, a session-less JSON probe that reports
+whether this server writes to a primary or a standby, plus the versions the installed
+modules choose to publish.
+""",
+    'version': '1.1.0',
     'category': 'Extra Tools',
     'license': 'LGPL-3',
     'website': 'https://github.com/cmorisse/inouk_session_store.git',

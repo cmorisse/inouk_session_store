@@ -31,8 +31,30 @@ class InoukHealthCheck(http.Controller):
     is the healthy answer on the standby, and no answer at all is what the supervision
     reads as broken. The addon is server-wide, so the route is served on every database.
     The route is session-less by contract (``save_session=False``): a probe leaves
-    nothing behind, neither a session nor a ``session_id`` cookie.
+    nothing behind, neither a session nor a ``session_id`` cookie. Alongside the
+    replication status the answer carries ``versions``, a list the installed modules fill
+    in themselves -- see ``_health_check_versions``.
     """
+
+    def _health_check_versions(self):
+        """Components that want to publish their version append an entry here.
+
+        The base answer is an empty list: this addon publishes nothing about itself. An
+        interested module inherits this controller and extends the list -- Odoo composes
+        every subclass of a controller into one class, so several modules can contribute
+        without knowing each other:
+
+            class MyHealthCheck(InoukHealthCheck):
+                def _health_check_versions(self):
+                    versions = super()._health_check_versions()
+                    versions.append({'name': 'my_app', 'version': my_version()})
+                    return versions
+
+        Each entry is a dict with at least ``name`` and ``version``, so a contributor can
+        add a field later without breaking a reader. The route is ``auth='none'``: publish
+        only what may be public.
+        """
+        return []
 
     @http.route('/inouk_health_check', type='http', auth='none', methods=['GET'],
                 csrf=False, save_session=False, readonly=False)
@@ -44,4 +66,5 @@ class InoukHealthCheck(http.Controller):
         [(in_recovery,)] = request.env.cr.fetchall()
         return request.make_json_response({
             'replication_status': 'cluster_is_standby' if in_recovery else 'cluster_is_primary',
+            'versions': self._health_check_versions(),
         })
