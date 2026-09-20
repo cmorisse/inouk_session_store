@@ -11,7 +11,7 @@ modules choose to publish.
     'version': '1.1.0',
     'category': 'Extra Tools',
     'license': 'LGPL-3',
-    'website': 'https://github.com/cmorisse/inouk_session_store.git',
+    'website': 'https://gitlab.com/cmorisse/inouk_session_store',
     'author': 'MuK IT, Cyril MORISSE',
     'contributors': [
         'Mathias Markl <mathias.markl@mukit.at>',

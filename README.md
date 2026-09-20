@@ -1,5 +1,7 @@
 # Inouk Session Store
 
+The reference repository is [https://gitlab.com/cmorisse/inouk_session_store](https://gitlab.com/cmorisse/inouk_session_store); [https://github.com/cmorisse/inouk_session_store](https://github.com/cmorisse/inouk_session_store) is a mirror of it. Issues and merge requests go to GitLab.
+
 Warning: This is a fork of Muk It - Odoo Session Store.
 
 By default Odoo stores web client (werkzeug) sessions in the file system. This prevent to scale Odoo

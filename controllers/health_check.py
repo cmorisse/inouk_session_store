@@ -3,7 +3,7 @@
 #    Copyright (c) 2021 Cyril MORISSE (@cmorisse)
 #
 #    This file is part of Inouk Session Store
-#    (see https://gitub.com/cmorisse/inouk_session_store).
+#    (see https://gitlab.com/cmorisse/inouk_session_store).
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Lesser General Public License as published by
